@@ -9,6 +9,10 @@
 *.so.*
 *.dll
 *.dylib
+*.exe
+dist/*
+*.spec
+build/*
 
 # Qt-es
 object_script.*.Release
