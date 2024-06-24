@@ -1,5 +1,6 @@
 {
     "files": [
-        "mainwindow.py"
+        "mainwindow.py",
+        "BrowseQt.png"
     ]
 }
