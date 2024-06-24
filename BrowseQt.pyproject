@@ -1,6 +1,7 @@
 {
     "files": [
         "mainwindow.py",
-        "BrowseQt.png"
+        "BrowseQt.png",
+        "BrowseQt.ico"
     ]
 }

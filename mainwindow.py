@@ -1,8 +1,8 @@
 # This Python file uses the following encoding: utf-8
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QStyle
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QLineEdit, QLabel, QStyle, QTabWidget
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtWebEngineWidgets import QWebEngineView
 import ctypes
 myappid = 'codex.tav.browseqt.v1'
@@ -15,13 +15,14 @@ try:
     pyi_splash.update_text("Loading...")
 except:
     pass
+
 class HelpDialog(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.raise_()
         self.activateWindow()
         self.setWindowTitle("About CodeX BrowseQt")
-        self.resize(300, 100)
+        self.resize(300, 600)
         self.qtlogo = self.style().standardIcon(getattr(QStyle, "SP_TitleBarMenuButton"))
         self.oklogo = self.style().standardIcon(getattr(QStyle, "SP_DialogOkButton"))
         self.widget = QWidget()
@@ -39,28 +40,27 @@ class HelpDialog(QMainWindow):
         self.layout.addWidget(self.aboutlabel)
         self.layout.addLayout(self.hlay)
         self.widget.setLayout(self.layout)
-        self.setWindowIcon(self.qtlogo)
+        self.setWindowIcon(QIcon("BrowseQt.ico"))
         self.setCentralWidget(self.widget)
 
-class MainWindow(QMainWindow):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.raise_()
-        self.activateWindow()
+class Tab(QWidget):
+    def __init__(self, tabindex, parent):
+        super().__init__()
         self.qtlogo = self.style().standardIcon(getattr(QStyle, "SP_TitleBarMenuButton"))
+        self.newlogo = self.style().standardIcon(getattr(QStyle, "SP_DialogYesButton"))
         self.backarrow = self.style().standardIcon(getattr(QStyle, "SP_ArrowBack"))
         self.forwarrow = self.style().standardIcon(getattr(QStyle, "SP_ArrowForward"))
         self.commlink = self.style().standardIcon(getattr(QStyle, "SP_CommandLink"))
         self.reload = self.style().standardIcon(getattr(QStyle, "SP_BrowserReload"))
         self.info = self.style().standardIcon(getattr(QStyle, "SP_FileDialogInfoView"))
-        self.widget = QWidget()
-        self.resize(1000, 1000)
-        self.setWindowIcon(self.qtlogo)
-        self.setWindowTitle("CodeX BrowseQt")
+        self.widget = self
+        self.tabs = parent.tabs
         self.hl = QHBoxLayout()
         self.bb = QPushButton(text="", icon=self.backarrow)
         self.fb = QPushButton(text="", icon=self.forwarrow)
         self.rb = QPushButton(text="", icon=self.reload)
+        self.nb = QPushButton(text="", icon=self.newlogo)
+        self.nb.clicked.connect(parent.addtab)
         self.gobutton = QPushButton(text="", icon=self.commlink)
         self.helpbutton = QPushButton(text="", icon=self.info)
         self.dialog = HelpDialog()
@@ -72,24 +72,26 @@ class MainWindow(QMainWindow):
         self.hl.addWidget(self.fb)
         self.hl.addWidget(self.textedit)
         self.hl.addWidget(self.gobutton)
+        self.hl.addWidget(self.nb)
         self.vl = QVBoxLayout()
         self.webview = QWebEngineView()
         self.vl.addLayout(self.hl)
         self.vl.addWidget(self.webview)
         self.widget.setLayout(self.vl)
-        self.setCentralWidget(self.widget)
-        self.webview.titleChanged.connect(lambda:self.setWindowTitle("CodeX BrowseQt - " + self.webview.title()))
+        self.webview.titleChanged.connect(lambda:self.tabs.setTabText(tabindex, self.webview.title()))
         def cwbi():
-            self.setWindowIcon(self.qtlogo)
+            self.tabs.setTabIcon(tabindex, self.qtlogo)
             i = self.webview.icon()
-            self.setWindowIcon(i)
+            self.tabs.setTabIcon(tabindex, i)
         self.webview.iconChanged.connect(cwbi)
         def nt(x):
             self.webview.load(QUrl(x))
-            self.setWindowTitle("BrowseQt - " + x)
-            self.setWindowIcon(self.qtlogo)
+            self.tabs.setTabText(tabindex, x)
+            self.tabs.setTabIcon(tabindex, self.qtlogo)
         def navigate():
             x = self.textedit.text()
+            if "chrome://" in x:
+                return
             nt(x)
         self.textedit.returnPressed.connect(navigate)
         self.gobutton.clicked.connect(navigate)
@@ -99,10 +101,36 @@ class MainWindow(QMainWindow):
         def updua():
             x = lambda: self.textedit.setText(self.webview.url().toString())
             x()
-
         self.webview.urlChanged.connect(updua)
         self.webview.load(QUrl("https://start.duckduckgo.com/"))
         self.textedit.setText("https://start.duckduckgo.com/")
+
+class MainWindow(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.raise_()
+        self.activateWindow()
+        self.resize(900,900)
+        self.setWindowIcon(QIcon("BrowseQt.ico"))
+        self.setWindowTitle("CodeX BrowseQt")
+        self.ti = 0
+        self.tabs = QTabWidget()
+        self.layout = QVBoxLayout()
+        self.tabs.setTabsClosable(True)
+        def closehandler(index):
+            self.tabs.widget(index).webview.titleChanged.disconnect()
+            self.tabs.widget(index).webview.urlChanged.disconnect()
+            self.tabs.widget(index).webview.iconChanged.disconnect()
+            self.tabs.widget(index).webview.setUrl(QUrl("about:blank"))
+            self.tabs.removeTab(index)
+            if self.tabs.count() == 0:
+                sys.exit(0)
+        self.tabs.tabCloseRequested.connect(closehandler)
+        self.addtab()
+        self.setCentralWidget(self.tabs)
+    def addtab(self):
+        self.tabs.addTab(Tab(self.ti, self), f"Page {self.ti+1}")
+        self.ti += 1
 if __name__ == "__main__":
     app = QApplication([])
     window = MainWindow()
